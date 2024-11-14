@@ -7,6 +7,8 @@ white = pygame.Color(255, 255, 255)
 gameDisplay = pygame.display.set_mode((1200, 800))
 gameExit = True
 
+turn = 'white'
+
 bg = pygame.image.load('resources/img/bg.png')
 brownBoard = pygame.image.load('resources/img/light.png')
 lightBrownBoard = pygame.image.load('resources/img/dark.png')
@@ -34,35 +36,41 @@ if not pygame.font.get_init():
 class Piece:
     moves = []
 
-    def __init__(self, kind: str, color: str, img: Surface, coords: str):
+    def __init__(self, kind: str, color: str, img: Surface, pos: tuple):
+        self.selected = False
         self.kind = kind
         self.color = color
         self.img = img
-        self.coords = coords
+        self.pos = pos
         self.pressed = False
-        self.int_coords = self.get_gui_coords()  # Get coordinates from your method
+        self.int_coords = self.get_gui_pos()  # Get coordinates from your method
         self.top_rect = pygame.Rect(self.int_coords, (75, 75))
 
-    def get_gui_coords(self, square_size=75):
-        # Map board position (e.g., "a8") to GUI coordinates
-        row, col = self.coords[0], int(self.coords[1])
-        x = (ord(row) - ord('a')) * square_size + 300
-        y = (8 - col) * square_size + 100
-        return (x, y)
+    def get_gui_pos(self, square_size=75):
+        x, y = self.pos
+        return x * square_size + 300, (7 - y) * square_size + 100  # Adjust for GUI positions
 
-    # def check_click(self):
-    #     posm = pygame.mouse.get_pos()
-    #     if self.top_rect.collidepoint(posm):
-    #         if pygame.mouse.get_pressed()[0] is True:
-    #             self.selected()
+    def selected_action(self, possible_moves):
+        print(self.kind)
 
+        for i in possible_moves:
+            a = main_dict.get(i)
+            if 0 <= i[0] < 8 and 0 <= i[1] < 8:
+                print(i)
+                print(a)
+
+        #   TODO
+        #       IT SHOULD GET A LIST OF THE POSSIBLE MOVES
+        #       PSEUDO:
+        #           FROM "main_dict" GET THE POSSIBLE "get_possible_moves()"
+        #           PAWN -> X, Y + 1..... ETC
     def __repr__(self):
-        return f"Piece(name={self.kind!r}, color={self.color!r}, position={self.coords!r})"
+        return f"Piece(name={self.kind!r}, color={self.color!r}, position={self.pos!r})"
 
 
 class Knight(Piece):
     def get_possible_moves(self):
-        x, y = self.coords
+        x, y = self.pos
         return [(x + 2, y + 1), (x + 2, y - 1),
                 (x - 2, y + 1), (x - 2, y - 1),
                 (x + 1, y + 2), (x + 1, y - 2),
@@ -71,7 +79,7 @@ class Knight(Piece):
 
 class Rook(Piece):
     def get_possible_moves(self):
-        x, y = self.coords
+        x, y = self.pos
         moves = []
 
         # Vertical and horizontal moves
@@ -86,7 +94,7 @@ class Rook(Piece):
 
 class Bishop(Piece):
     def get_possible_moves(self):
-        x, y = self.coords
+        x, y = self.pos
         moves = []
 
         # Diagonal moves
@@ -101,7 +109,31 @@ class Bishop(Piece):
 
 class Queen(Piece):
     def get_possible_moves(self):
-        x, y = self.coords
+        x, y = self.pos
+        moves = []
+
+        # Vertical and horizontal moves
+        for i in range(8):
+            if i != x:  # Horizontal moves
+                moves.append((i, y))
+            if i != y:  # Vertical moves
+                moves.append((i, y))
+
+        # Diagonal moves
+        for i in range(1, 8):
+            moves.append((x + i, y + i))  # Down-right
+            moves.append((x + i, y - i))  # Up-right
+            moves.append((x - i, y + i))  # Down-left
+            moves.append((x - i, y - i))  # Up-left
+
+        return moves
+
+
+# TODO
+#   EDIT WITH THE KING MOVES ETC
+class King(Piece):
+    def get_possible_moves(self):
+        x, y = self.pos
         moves = []
 
         # Vertical and horizontal moves
@@ -123,137 +155,134 @@ class Queen(Piece):
 
 class Pawn(Piece):
     def get_possible_moves(self):
-        x, y = self.coords
+        x, y = self.pos
         return [(x, y + 1), (x + 1, y + 1), (x - 1, y + 1)]
 
 
 class Square:
 
-    def __init__(self, coords: 'str', color: str):
-        self.coords = coords
+    def __init__(self, pos: tuple, color: str):
+        self.pos = pos
         self.color = color
-        self.int_coords = self.get_gui_coords()
+        self.int_coords = self.get_gui_pos()
 
-    def get_gui_coords(self, square_size=75):
-        # Map board position (e.g., "a8") to GUI coordinates
-        row, col = self.coords[0], int(self.coords[1])
-        x = (ord(row) - ord('a')) * square_size + 300
-        y = (8 - col) * square_size + 100
-        return (x, y)
+    def get_gui_pos(self, square_size=75):
+        x, y = self.pos
+        return x * square_size + 300, (7 - y) * square_size + 100  # Adjust for GUI positions
 
 
 gameDisplay.fill(black)
 gameDisplay.blit(bg, (300, 100))
 
-pawn_b_1 = Pawn('Pawn', 'black', b_pawn, 'a7')
-pawn_b_2 = Pawn('Pawn', 'black', b_pawn, 'b7')
-pawn_b_3 = Pawn('Pawn', 'black', b_pawn, 'c7')
-pawn_b_4 = Pawn('Pawn', 'black', b_pawn, 'd7')
-pawn_b_5 = Pawn('Pawn', 'black', b_pawn, 'e7')
-pawn_b_6 = Pawn('Pawn', 'black', b_pawn, 'f7')
-pawn_b_7 = Pawn('Pawn', 'black', b_pawn, 'g7')
-pawn_b_8 = Pawn('Pawn', 'black', b_pawn, 'h7')
+pawn_b_1 = Pawn('Pawn', 'black', b_pawn, (0, 6))
+pawn_b_2 = Pawn('Pawn', 'black', b_pawn, (1, 6))
+pawn_b_3 = Pawn('Pawn', 'black', b_pawn, (2, 6))
+pawn_b_4 = Pawn('Pawn', 'black', b_pawn, (3, 6))
+pawn_b_5 = Pawn('Pawn', 'black', b_pawn, (4, 6))
+pawn_b_6 = Pawn('Pawn', 'black', b_pawn, (5, 6))
+pawn_b_7 = Pawn('Pawn', 'black', b_pawn, (6, 6))
+pawn_b_8 = Pawn('Pawn', 'black', b_pawn, (7, 6))
 
-rook_b_1 = Rook('Rook', 'black', b_rook, 'a8')
-knight_b_1 = Knight('Knight', 'black', b_knight, 'b8')
-bishop_b_1 = Bishop('Bishop', 'black', b_bishop, 'c8')
-king_b = Bishop('King', 'black', b_king, 'd8')
-queen_b = Bishop('Queen', 'black', b_queen, 'e8')
-bishop_b_2 = Bishop('Bishop', 'black', b_bishop, 'f8')
-knight_b_2 = Knight('Knight', 'black', b_knight, 'g8')
-rook_b_2 = Rook('Rook', 'black', b_rook, 'h8')
+rook_b_1 = Rook('Rook', 'black', b_rook, (0, 7))
+knight_b_1 = Knight('Knight', 'black', b_knight, (1, 7))
+bishop_b_1 = Bishop('Bishop', 'black', b_bishop, (2, 7))
+king_b = King('King', 'black', b_king, (3, 7))
+queen_b = Queen('Queen', 'black', b_queen, (4, 7))
+bishop_b_2 = Bishop('Bishop', 'black', b_bishop, (5, 7))
+knight_b_2 = Knight('Knight', 'black', b_knight, (6, 7))
+rook_b_2 = Rook('Rook', 'black', b_rook, (7, 7))
 
-pawn_w_1 = Pawn('Pawn', 'white', w_pawn, 'a2')
-pawn_w_2 = Pawn('Pawn', 'white', w_pawn, 'b2')
-pawn_w_3 = Pawn('Pawn', 'white', w_pawn, 'c2')
-pawn_w_4 = Pawn('Pawn', 'white', w_pawn, 'd2')
-pawn_w_5 = Pawn('Pawn', 'white', w_pawn, 'e2')
-pawn_w_6 = Pawn('Pawn', 'white', w_pawn, 'f2')
-pawn_w_7 = Pawn('Pawn', 'white', w_pawn, 'g2')
-pawn_w_8 = Pawn('Pawn', 'white', w_pawn, 'h2')
+pawn_w_1 = Pawn('Pawn', 'white', w_pawn, (0, 1))
+pawn_w_2 = Pawn('Pawn', 'white', w_pawn, (1, 1))
+pawn_w_3 = Pawn('Pawn', 'white', w_pawn, (2, 1))
+pawn_w_4 = Pawn('Pawn', 'white', w_pawn, (3, 1))
+pawn_w_5 = Pawn('Pawn', 'white', w_pawn, (4, 1))
+pawn_w_6 = Pawn('Pawn', 'white', w_pawn, (5, 1))
+pawn_w_7 = Pawn('Pawn', 'white', w_pawn, (6, 1))
+pawn_w_8 = Pawn('Pawn', 'white', w_pawn, (7, 1))
 
-rook_w_1 = Rook('Rook', 'white', w_rook, 'a1')
-knight_w_1 = Knight('Knight', 'white', w_knight, 'b1')
-bishop_w_1 = Bishop('Bishop', 'white', w_bishop, 'c1')
-king_w = Bishop('King', 'white', w_king, 'd1')
-queen_w = Bishop('Queen', 'white', w_queen, 'e1')
-bishop_w_2 = Bishop('Bishop', 'white', w_bishop, 'f1')
-knight_w_2 = Knight('Knight', 'white', w_knight, 'g1')
-rook_w_2 = Rook('Rook', 'white', w_rook, 'h1')
+rook_w_1 = Rook('Rook', 'white', w_rook, (0, 0))
+knight_w_1 = Knight('Knight', 'white', w_knight, (1, 0))
+bishop_w_1 = Bishop('Bishop', 'white', w_bishop, (2, 0))
+king_w = King('King', 'white', w_king, (3, 0))
+queen_w = Queen('Queen', 'white', w_queen, (4, 0))
+bishop_w_2 = Bishop('Bishop', 'white', w_bishop, (5, 0))
+knight_w_2 = Knight('Knight', 'white', w_knight, (6, 0))
+rook_w_2 = Rook('Rook', 'white', w_rook, (7, 0))
 
-# TODO
-#   CHANGE THE COORDS OF THE SQUARES (LIKE IN PIECES)
-square1 = Square('a1', 'brown')
-square2 = Square('a2', 'light')
-square3 = Square('a3', 'brown')
-square4 = Square('a4', 'light')
-square5 = Square('a5', 'brown')
-square6 = Square('a6', 'light')
-square7 = Square('a7', 'brown')
-square8 = Square('a8', 'light')
 
-square9 = Square('b1', 'light')
-square10 = Square('b2', 'brown')
-square11 = Square('b3', 'light')
-square12 = Square('b4', 'brown')
-square13 = Square('b5', 'light')
-square14 = Square('b6', 'brown')
-square15 = Square('b7', 'light')
-square16 = Square('b8', 'brown')
+square1 = Square((0, 0), 'brown')
+square2 = Square((0, 1), 'light')
+square3 = Square((0, 2), 'brown')
+square4 = Square((0, 3), 'light')
+square5 = Square((0, 4), 'brown')
+square6 = Square((0, 5), 'light')
+square7 = Square((0, 6), 'brown')
+square8 = Square((0, 7), 'light')
 
-square17 = Square('c1', 'brown')
-square18 = Square('c2', 'light')
-square19 = Square('c3', 'brown')
-square20 = Square('c4', 'light')
-square21 = Square('c5', 'brown')
-square22 = Square('c6', 'light')
-square23 = Square('c7', 'brown')
-square24 = Square('c8', 'light')
+square9 = Square((1, 0), 'light')
+square10 = Square((1, 1), 'brown')
+square11 = Square((1, 2), 'light')
+square12 = Square((1, 3), 'brown')
+square13 = Square((1, 4), 'light')
+square14 = Square((1, 5), 'brown')
+square15 = Square((1, 6), 'light')
+square16 = Square((1, 7), 'brown')
 
-square25 = Square('d1', 'light')
-square26 = Square('d2', 'brown')
-square27 = Square('d3', 'light')
-square28 = Square('d4', 'brown')
-square29 = Square('d5', 'light')
-square30 = Square('d6', 'brown')
-square31 = Square('d7', 'light')
-square32 = Square('d8', 'brown')
+square17 = Square((2, 0), 'brown')
+square18 = Square((2, 1), 'light')
+square19 = Square((2, 2), 'brown')
+square20 = Square((2, 3), 'light')
+square21 = Square((2, 4), 'brown')
+square22 = Square((2, 5), 'light')
+square23 = Square((2, 6), 'brown')
+square24 = Square((2, 7), 'light')
 
-square33 = Square('e1', 'brown')
-square34 = Square('e2', 'light')
-square35 = Square('e3', 'brown')
-square36 = Square('e4', 'light')
-square37 = Square('e5', 'brown')
-square38 = Square('e6', 'light')
-square39 = Square('e7', 'brown')
-square40 = Square('e8', 'light')
+square25 = Square((3, 0), 'light')
+square26 = Square((3, 1), 'brown')
+square27 = Square((3, 2), 'light')
+square28 = Square((3, 3), 'brown')
+square29 = Square((3, 4), 'light')
+square30 = Square((3, 5), 'brown')
+square31 = Square((3, 6), 'light')
+square32 = Square((3, 7), 'brown')
 
-square41 = Square('f1', 'light')
-square42 = Square('f2', 'brown')
-square43 = Square('f3', 'light')
-square44 = Square('f4', 'brown')
-square45 = Square('f5', 'light')
-square46 = Square('f6', 'brown')
-square47 = Square('f7', 'light')
-square48 = Square('f8', 'brown')
+square33 = Square((4, 0), 'brown')
+square34 = Square((4, 1), 'light')
+square35 = Square((4, 2), 'brown')
+square36 = Square((4, 3), 'light')
+square37 = Square((4, 4), 'brown')
+square38 = Square((4, 5), 'light')
+square39 = Square((4, 6), 'brown')
+square40 = Square((4, 7), 'light')
 
-square49 = Square('g1', 'brown')
-square50 = Square('g2', 'light')
-square51 = Square('g3', 'brown')
-square52 = Square('g4', 'light')
-square53 = Square('g5', 'brown')
-square54 = Square('g6', 'light')
-square55 = Square('g7', 'brown')
-square56 = Square('g8', 'light')
+square41 = Square((5, 0), 'light')
+square42 = Square((5, 1), 'brown')
+square43 = Square((5, 2), 'light')
+square44 = Square((5, 3), 'brown')
+square45 = Square((5, 4), 'light')
+square46 = Square((5, 5), 'brown')
+square47 = Square((5, 6), 'light')
+square48 = Square((5, 7), 'brown')
 
-square57 = Square('h1', 'light')
-square58 = Square('h2', 'brown')
-square59 = Square('h3', 'light')
-square60 = Square('h4', 'brown')
-square61 = Square('h5', 'light')
-square62 = Square('h6', 'brown')
-square63 = Square('h7', 'light')
-square64 = Square('h8', 'brown')
+square49 = Square((6, 0), 'brown')
+square50 = Square((6, 1), 'light')
+square51 = Square((6, 2), 'brown')
+square52 = Square((6, 3), 'light')
+square53 = Square((6, 4), 'brown')
+square54 = Square((6, 5), 'light')
+square55 = Square((6, 6), 'brown')
+square56 = Square((6, 7), 'light')
+
+square57 = Square((7, 0), 'light')
+square58 = Square((7, 1), 'brown')
+square59 = Square((7, 2), 'light')
+square60 = Square((7, 3), 'brown')
+square61 = Square((7, 4), 'light')
+square62 = Square((7, 5), 'brown')
+square63 = Square((7, 6), 'light')
+square64 = Square((7, 7), 'brown')
+
 
 square_list = [square1, square2, square3, square4, square5, square6, square7, square8, square9,
                square10, square11, square12, square13, square14, square15, square16, square17,
@@ -268,19 +297,21 @@ square_list = [square1, square2, square3, square4, square5, square6, square7, sq
 #   MAKE A BLACK INITIAL ALSO, BE ABLE TO CHOOSE TO START WITH WHITE, BLACK OR RANDOM
 #   MAKE A main_dict FOR BLACK
 main_dict = {
-    'a8': rook_b_1, 'b8': knight_b_1, 'c8': bishop_b_2, 'd8': queen_b, 'e8': king_b, 'f8': bishop_b_2, 'g8': knight_b_2,
-    'h8': rook_b_2,
-    'a7': pawn_b_1, 'b7': pawn_b_2, 'c7': pawn_b_3, 'd7': pawn_b_4, 'e7': pawn_b_5, 'f7': pawn_b_6, 'g7': pawn_b_7,
-    'h7': pawn_b_8,
-    'a6': None, 'b6': None, 'c6': None, 'd6': None, 'e6': None, 'f6': None, 'g6': None, 'h6': None,
-    'a5': None, 'b5': None, 'c5': None, 'd5': None, 'e5': None, 'f5': None, 'g5': None, 'h5': None,
-    'a4': None, 'b4': None, 'c4': None, 'd4': None, 'e4': None, 'f4': None, 'g4': None, 'h4': None,
-    'a3': None, 'b3': None, 'c3': None, 'd3': None, 'e3': None, 'f3': None, 'g3': None, 'h3': None,
-    'a2': pawn_w_1, 'b2': pawn_w_2, 'c2': pawn_w_3, 'd2': pawn_w_4, 'e2': pawn_w_5, 'f2': pawn_w_6, 'g2': pawn_w_7,
-    'h2': pawn_w_8,
-    'a1': rook_w_1, 'b1': knight_w_1, 'c1': bishop_w_1, 'd1': queen_w, 'e1': king_w, 'f1': bishop_w_2, 'g1': knight_w_2,
-    'h1': rook_w_2
+    (0, 0): rook_w_1, (1, 0): knight_w_1, (2, 0): bishop_w_1, (3, 0): queen_w, (4, 0): king_w, (5, 0): bishop_w_2,
+    (6, 0): knight_w_2, (7, 0): rook_w_2,
+    (0, 1): pawn_w_1, (1, 1): pawn_w_2, (2, 1): pawn_w_3, (3, 1): pawn_w_4, (4, 1): pawn_w_5, (5, 1): pawn_w_6,
+    (6, 1): pawn_w_7, (7, 1): pawn_w_8,
+    (0, 2): None, (1, 2): None, (2, 2): None, (3, 2): None, (4, 2): None, (5, 2): None, (6, 2): None, (7, 2): None,
+    (0, 3): None, (1, 3): None, (2, 3): None, (3, 3): None, (4, 3): None, (5, 3): None, (6, 3): None, (7, 3): None,
+    (0, 4): None, (1, 4): None, (2, 4): None, (3, 4): None, (4, 4): None, (5, 4): None, (6, 4): None, (7, 4): None,
+    (0, 5): None, (1, 5): None, (2, 5): None, (3, 5): None, (4, 5): None, (5, 5): None, (6, 5): None, (7, 5): None,
+    (0, 6): pawn_b_1, (1, 6): pawn_b_2, (2, 6): pawn_b_3, (3, 6): pawn_b_4, (4, 6): pawn_b_5, (5, 6): pawn_b_6,
+    (6, 6): pawn_b_7, (7, 6): pawn_b_8,
+    (0, 7): rook_b_1, (1, 7): knight_b_1, (2, 7): bishop_b_2, (3, 7): queen_b, (4, 7): king_b, (5, 7): bishop_b_2,
+    (6, 7): knight_b_2, (7, 7): rook_b_2
 }
+
+
 
 for i in square_list:
     if i.color == 'light':
@@ -301,9 +332,26 @@ for i in whites:
 
 pygame.display.update()
 
+
+def check_click(click_pos):  # Checks which piece has been pressed
+    # if turn == 'white':
+    for w_piece in whites:
+        if w_piece.top_rect.collidepoint(click_pos):
+            w_piece.selected = True
+            w_piece.selected_action(w_piece.get_possible_moves())
+
+    # elif turn == 'black':
+    for b_piece in blacks:
+        if b_piece.top_rect.collidepoint(click_pos):
+            b_piece.selected = True
+            b_piece.selected_action(b_piece.get_possible_moves())
+
+
+# Main loop
 while gameExit:
-    # CHECKS IF QUIT BUTTON IS PRESSED
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
+        elif event.type == pygame.MOUSEBUTTONDOWN:  # Checks if mouse is pressed
+            check_click(event.pos)
