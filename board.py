@@ -52,30 +52,20 @@ class Piece:
         x, y = self.pos
         return x * square_size + 300, (7 - y) * square_size + 100  # Adjust for GUI positions
 
-
     def selected_action(self, possible_moves):
-        def select_squares():
-            for square in square_list:
-                square.for_selection = False
-            for i in possible_moves:
-                a = main_dict.get(i)
-                if 0 <= i[0] < 8 and 0 <= i[1] < 8:
-                    for square in square_list:
-                        if square.has_piece is False:
-                            if square.pos == i:
-                                square.for_selection = True
-                                if square.color == 'brown':
-                                    square.img = selectedLightBrownBoard
-                                elif square.color == 'light':
-                                    square.img = selectedBrownBoard
-
-        select_squares()
-
-        #   TODO
-        #       IT SHOULD GET A LIST OF THE POSSIBLE MOVES
-        #       PSEUDO:
-        #           FROM "main_dict" GET THE POSSIBLE "get_possible_moves()"
-        #           PAWN -> X, Y + 1..... ETC
+        for square in square_list:
+            square.for_selection = False
+        for i in possible_moves:
+            a = main_dict.get(i)
+            if 0 <= i[0] < 8 and 0 <= i[1] < 8:
+                for square in square_list:
+                    if square.has_piece is False:
+                        if square.pos == i:
+                            square.for_selection = True
+                            if square.color == 'brown':
+                                square.img = selectedLightBrownBoard
+                            elif square.color == 'light':
+                                square.img = selectedBrownBoard
 
     def __repr__(self):
         return f"Piece(name={self.kind!r}, color={self.color!r}, position={self.pos!r})"
@@ -193,11 +183,13 @@ class Square:
             moves_list = selected_piece.get_possible_moves()
             for move in moves_list:
                 if move == self.pos:
+                    for square in square_list:  #   Has_piece set to False for the square where the piece was
+                        if square.pos == selected_piece.pos:
+                            square.has_piece = False
                     selected_piece.pos = self.pos
                     selected_piece.int_coords = self.int_coords
                     selected_piece.top_rect = pygame.Rect(self.int_coords, (75, 75))
-                    pygame.display.update()
-                    print(selected_piece.pos)
+                    self.has_piece = True
 
 
 gameDisplay.fill(black)
@@ -390,7 +382,7 @@ def refresh_screen():
     pygame.display.update()
 
 
-# Main loop
+# MAIN LOOP
 while gameExit:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
