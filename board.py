@@ -69,7 +69,7 @@ class Piece:
                     for square in square_list:
                         if square.pos == (2, 0):
                             square.for_selection = True
-                            square.img = selectedLightBrownBoard
+                            square.img = selectedBrownBoard
 
             #     TODO
             #       ADD BLACKS 'k' and 'q' square selection
@@ -198,6 +198,9 @@ class King(Piece):
 
         return castling
 
+    # TODO
+    #   ADD Has_moved logic
+
     def get_possible_moves(self):
         x, y = self.pos
         move_list = [(x, y + 1), (x + 1, y + 1), (x - 1, y + 1), (x + 1, y), (x - 1, y), (x, y - 1),
@@ -246,24 +249,38 @@ class Square:
                 if type(move) is str:
                     if move == 'K':
                         if self.pos == (6, 0):
+                            for square in square_list:  # Has_piece set to False for the square where the piece was
+                                if square.pos == selected_piece.pos:
+                                    square.has_piece = False
+                                elif square.pos == main_dict.get((7, 0)).pos:
+                                    square.has_piece = False
+
                             selected_piece.pos = self.pos
                             selected_piece.int_coords = self.int_coords
                             selected_piece.top_rect = pygame.Rect(self.int_coords, (75, 75))
-                            print(main_dict.get((7, 0)))
+
                             main_dict.get((7, 0)).pos = (5, 0)
                             main_dict.get((7, 0)).int_coords = main_dict.get((7, 0)).get_gui_pos()
                             main_dict.get((7, 0)).top_rect = pygame.Rect(main_dict.get((7, 0)).int_coords, (75, 75))
                             self.has_piece = True
+
                     if move == 'Q':
                         if self.pos == (2, 0):
+                            for square in square_list:  # Has_piece set to False for the square where the piece was
+                                if square.pos == selected_piece.pos:
+                                    square.has_piece = False
+                                elif square.pos == main_dict.get((0, 0)).pos:
+                                    square.has_piece = False
+
                             selected_piece.pos = self.pos
                             selected_piece.int_coords = self.int_coords
                             selected_piece.top_rect = pygame.Rect(self.int_coords, (75, 75))
-                            print(main_dict.get((0, 0)))
+
                             main_dict.get((0, 0)).pos = (3, 0)
                             main_dict.get((0, 0)).int_coords = main_dict.get((0, 0)).get_gui_pos()
                             main_dict.get((0, 0)).top_rect = pygame.Rect(main_dict.get((0, 0)).int_coords, (75, 75))
                             self.has_piece = True
+
                     # TODO
                     #   FINISH 'k' 'q' CASTLING
 
@@ -410,9 +427,7 @@ square_list = [square1, square2, square3, square4, square5, square6, square7, sq
                square50, square51, square52, square53, square54, square55, square56, square57,
                square58, square59, square60, square61, square62, square63, square64]
 
-# TODO
-#   MAKE A BLACK INITIAL ALSO, BE ABLE TO CHOOSE TO START WITH WHITE, BLACK OR RANDOM
-#   MAKE A main_dict FOR BLACK
+
 main_dict = {
     (0, 0): rook_w_1, (1, 0): knight_w_1, (2, 0): bishop_w_1, (3, 0): queen_w, (4, 0): king_w, (5, 0): bishop_w_2,
     (6, 0): knight_w_2, (7, 0): rook_w_2,
