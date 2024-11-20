@@ -149,7 +149,7 @@ class Queen(Piece):
             if i != x:  # Horizontal moves
                 moves.append((i, y))
             if i != y:  # Vertical moves
-                moves.append((i, y))
+                moves.append((x, i))
 
         # Diagonal moves
         for i in range(1, 8):
@@ -172,12 +172,12 @@ class King(Piece):
         if self.moved is False:
             if self.color == 'white':
                 # Adjusted for white pieces
-                if main_dict.get((7, 0)).name is not None:
+                if main_dict.get((7, 0)) is not None:
                     if main_dict.get((7, 0)).name == 'Rook':
                         if main_dict.get((5, 0)) is None and main_dict.get((6, 0)) is None:  # Empty squares switched
                             castling = castling + 'K'
 
-                if main_dict.get((0, 0)).name is not None:  # Rook position switched
+                if main_dict.get((0, 0)) is not None:  # Rook position switched
                     if main_dict.get((0, 0)).name == 'Rook':
                         if main_dict.get((1, 0)) is None and main_dict.get((2, 0)) is None and main_dict.get(
                                 (3, 0)) is None:  # Empty squares switched
@@ -185,12 +185,12 @@ class King(Piece):
 
             elif self.color == 'black':
                 # Adjusted for black pieces
-                if main_dict.get((7, 7)).name is not None:  # Rook position switched
+                if main_dict.get((7, 7)) is not None:  # Rook position switched
                     if main_dict.get((7, 7)).name == 'Rook':
                         if main_dict.get((5, 7)) is None and main_dict.get((6, 7)) is None:  # Empty squares switched
                             castling = castling + 'k'
 
-                if main_dict.get((0, 7)).name is not None:  # Rook position switched
+                if main_dict.get((0, 7)) is not None:  # Rook position switched
                     if main_dict.get((0, 7)).name == 'Rook':
                         if main_dict.get((1, 7)) is None and main_dict.get((2, 7)) is None and main_dict.get(
                                 (3, 7)) is None:  # Empty squares switched
@@ -513,5 +513,12 @@ while gameExit:
     refresh_screen()
 
 # TODO
-#   ADD SQUARE SELECTION IN KING FOR CASTLING
-#   INVERTED BOARD FOR BLACK
+#   ADD:
+#       KING MOVED VAR
+#       INVERTED BOARD FOR BLACK
+#       NOT BEING ABLE TO MOVE WHEN PIECE IS INFRONT
+#       SOUND
+#   FIX:
+#       QUEEN NOT MOVING VERTICALLY
+#       AFTER MOVING A PIECE, RETURN TO NON-SELECTED SQUARES
+#
