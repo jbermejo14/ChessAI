@@ -41,8 +41,8 @@ if not pygame.font.get_init():
 class Piece:
     moves = []
 
-    def __init__(self, kind: str, color: str, img: Surface, pos: tuple):
-        self.name = kind
+    def __init__(self, name: str, color: str, img: Surface, pos: tuple):
+        self.name = name
         self.color = color
         self.img = img
         self.pos = pos
@@ -303,8 +303,108 @@ class Square:
                     self.has_piece = True
 
 
-def fen_translate(turn, main_dict, castling, move):
-    return None
+# blacks WHITES
+def fen_translate(main_dict):
+    n1 = 0
+    n2 = 8
+    for i in range(8):
+        string = ''
+        var = 0
+        counter = 0
+        for i in list(main_dict.values())[n1:n2]:
+            counter = counter + 1
+            if i is None:
+                var = var + 1
+            # Rook
+            elif i.name == 'Rook':
+                if i.color == 'white':
+                    if var == 0:
+                        string = string + 'R'
+                    elif var != 0:
+                        string = string + str(var) + 'R'
+                    var = 0
+                elif i.color == 'black':
+                    if var == 0:
+                        string = string + 'r'
+                    elif var != 0:
+                        string = string + str(var) + 'r'
+                    var = 0
+            # PAWN
+            elif i.name == 'Pawn':
+                if i.color == 'white':
+                    if var == 0:
+                        string = string + 'P'
+                    elif var != 0:
+                        string = string + str(var) + 'P'
+                    var = 0
+                elif i.color == 'black':
+                    if var == 0:
+                        string = string + 'p'
+                    elif var != 0:
+                        string = string + str(var) + 'p'
+                    var = 0
+            # Bishop
+            elif i.name == 'Bishop':
+                if i.color == 'white':
+                    if var == 0:
+                        string = string + 'B'
+                    elif var != 0:
+                        string = string + str(var) + 'B'
+                    var = 0
+                elif i.color == 'black':
+                    if var == 0:
+                        string = string + 'b'
+                    elif var != 0:
+                        string = string + str(var) + 'b'
+                    var = 0
+            # King
+            elif i.name == 'King':
+                if i.color == 'white':
+                    if var == 0:
+                        string = string + 'K'
+                    elif var != 0:
+                        string = string + str(var) + 'K'
+                    var = 0
+                elif i.color == 'black':
+                    if var == 0:
+                        string = string + 'k'
+                    elif var != 0:
+                        string = string + str(var) + 'k'
+                    var = 0
+            # Knight
+            elif i.name == 'Knight':
+                if i.color == 'white':
+                    if var == 0:
+                        string = string + 'N'
+                    elif var != 0:
+                        string = string + str(var) + 'N'
+                    var = 0
+                elif i.color == 'black':
+                    if var == 0:
+                        string = string + 'n'
+                    elif var != 0:
+                        string = string + str(var) + 'n'
+                    var = 0
+            # Queen
+            elif i.name == 'Queen':
+                if i.color == 'white':
+                    if var == 0:
+                        string = string + 'Q'
+                    elif var != 0:
+                        string = string + str(var) + 'Q'
+                    var = 0
+                elif i.color == 'black':
+                    if var == 0:
+                        string = string + 'q'
+                    elif var != 0:
+                        string = string + str(var) + 'q'
+                    var = 0
+            if counter == 8:
+                if var != 0:
+                    string = string + str(var)
+        print(string)
+        n1 = n1 + 8
+        n2 = n2 + 8
 
 
 gameDisplay.fill(black)
@@ -427,7 +527,6 @@ square_list = [square1, square2, square3, square4, square5, square6, square7, sq
                square50, square51, square52, square53, square54, square55, square56, square57,
                square58, square59, square60, square61, square62, square63, square64]
 
-
 main_dict = {
     (0, 0): rook_w_1, (1, 0): knight_w_1, (2, 0): bishop_w_1, (3, 0): queen_w, (4, 0): king_w, (5, 0): bishop_w_2,
     (6, 0): knight_w_2, (7, 0): rook_w_2,
@@ -507,6 +606,7 @@ while gameExit:
             sys.exit()
         elif event.type == pygame.MOUSEBUTTONDOWN:  # Checks if mouse is pressed
             check_click(event.pos)
+            fen_translate(main_dict)
             for piece in whites:
                 if piece.name == 'King':
                     piece.check_castling()
@@ -514,11 +614,10 @@ while gameExit:
 
 # TODO
 #   ADD:
-#       KING MOVED VAR
+#       KING MOVED VAR#       AFTER MOVING A PIECE, RETURN TO NON-SELECTED SQUARES
 #       INVERTED BOARD FOR BLACK
 #       NOT BEING ABLE TO MOVE WHEN PIECE IS INFRONT
 #       SOUND
 #   FIX:
 #       QUEEN NOT MOVING VERTICALLY
-#       AFTER MOVING A PIECE, RETURN TO NON-SELECTED SQUARES
 #
