@@ -1,16 +1,16 @@
 import sys
 import pygame
 from pygame import Surface
-import requests
-import json
 
 black = pygame.Color(0, 0, 0)
 white = pygame.Color(255, 255, 255)
 gameDisplay = pygame.display.set_mode((1200, 800))
 gameExit = True
 
-selected_piece = None
-turn = 'white'
+halfmove_clock = 0
+
+move = 0
+turn = 'w'
 
 bg = pygame.image.load('resources/img/bg.png')
 brownBoard = pygame.image.load('resources/img/light.png')
@@ -41,8 +41,8 @@ if not pygame.font.get_init():
 class Piece:
     moves = []
 
-    def __init__(self, kind: str, color: str, img: Surface, pos: tuple):
-        self.name = kind
+    def __init__(self, name: str, color: str, img: Surface, pos: tuple):
+        self.name = name
         self.color = color
         self.img = img
         self.pos = pos
@@ -54,7 +54,8 @@ class Piece:
         x, y = self.pos
         return x * square_size + 300, (7 - y) * square_size + 100  # Adjust for GUI positions
 
-    def selected_action(self, possible_moves):
+    @staticmethod
+    def selected_action(possible_moves):
         for square in square_list:
             square.for_selection = False
 
@@ -100,6 +101,9 @@ class Piece:
         return f"Piece(name={self.name!r}, color={self.color!r}, position={self.pos!r})"
 
 
+selected_piece: Piece or None
+
+
 class Knight(Piece):
     def get_possible_moves(self):
         x, y = self.pos
@@ -110,10 +114,19 @@ class Knight(Piece):
 
 
 class Rook(Piece):
+
+    def __init__(self, name: str, color: str, img: Surface, pos: tuple, initial_move: tuple):
+        super().__init__(name, color, img, pos)
+        self.initial_move = initial_move
+        self.moved = False
+
+    def check_moved(self):
+        if self.pos != self.initial_move:
+            self.moved = True
+
     def get_possible_moves(self):
         x, y = self.pos
         moves = []
-
         # Vertical and horizontal moves
         for i in range(8):
             if i != x:  # Horizontal moves
@@ -163,9 +176,15 @@ class Queen(Piece):
 
 class King(Piece):
 
-    def __init__(self, kind: str, color: str, img: Surface, pos: tuple):
-        super().__init__(kind, color, img, pos)
+    def __init__(self, name: str, color: str, img: Surface, pos: tuple, initial_move: tuple, rooks: tuple):
+        super().__init__(name, color, img, pos)
+        self.rooks = rooks
+        self.initial_move = initial_move
         self.moved = False
+
+    def check_moved(self):
+        if self.pos != self.initial_move:
+            self.moved = True
 
     def check_castling(self):
         castling = ''
@@ -198,31 +217,44 @@ class King(Piece):
 
         return castling
 
-    # TODO
-    #   ADD Has_moved logic
-
     def get_possible_moves(self):
         x, y = self.pos
         move_list = [(x, y + 1), (x + 1, y + 1), (x - 1, y + 1), (x + 1, y), (x - 1, y), (x, y - 1),
                      (x + 1, y - 1), (x - 1, y - 1)]
 
         castling = self.check_castling()
-        if 'K' in castling:
-            move_list.append('K')
-        if 'Q' in castling:
-            move_list.append('Q')
-        if 'k' in castling:
-            move_list.append('k')
-        if 'q' in castling:
-            move_list.append('q')
+        if self.moved is False:
+            if self.color == 'white':
+                if 'K' in castling:
+                    move_list.append('K')
+                if 'Q' in castling:
+                    move_list.append('Q')
+            elif self.color == 'black':
+                if 'k' in castling:
+                    move_list.append('k')
+                if 'q' in castling:
+                    move_list.append('q')
 
         return move_list
 
 
 class Pawn(Piece):
+
+    def __init__(self, name: str, color: str, img: Surface, pos: tuple, initial_move: tuple):
+        super().__init__(name, color, img, pos)
+        self.initial_move = initial_move
+        self.moved = False
+
+    def check_moved(self):
+        if self.pos != self.initial_move:
+            self.moved = True
+
     def get_possible_moves(self):
         x, y = self.pos
-        return [(x, y + 1), (x + 1, y + 1), (x - 1, y + 1)]
+        move_list = [(x, y + 1), (x + 1, y + 1), (x - 1, y + 1)]
+        if not self.moved:
+            move_list.append((x, y + 2))
+        return move_list
 
 
 class Square:
@@ -247,39 +279,45 @@ class Square:
             moves_list = selected_piece.get_possible_moves()
             for move in moves_list:
                 if type(move) is str:
-                    if move == 'K':
-                        if self.pos == (6, 0):
-                            for square in square_list:  # Has_piece set to False for the square where the piece was
-                                if square.pos == selected_piece.pos:
-                                    square.has_piece = False
-                                elif square.pos == main_dict.get((7, 0)).pos:
-                                    square.has_piece = False
+                    if selected_piece.moved is False:
+                        if move == 'K':
+                            if self.pos == (6, 0):
+                                for square in square_list:  # Has_piece set to False for the square where the piece was
+                                    if square.pos == selected_piece.pos:
+                                        square.has_piece = False
+                                    elif square.pos == main_dict.get((7, 0)).pos:
+                                        square.has_piece = False
 
-                            selected_piece.pos = self.pos
-                            selected_piece.int_coords = self.int_coords
-                            selected_piece.top_rect = pygame.Rect(self.int_coords, (75, 75))
+                                selected_piece.pos = self.pos
+                                selected_piece.int_coords = self.int_coords
+                                selected_piece.top_rect = pygame.Rect(self.int_coords, (75, 75))
 
-                            main_dict.get((7, 0)).pos = (5, 0)
-                            main_dict.get((7, 0)).int_coords = main_dict.get((7, 0)).get_gui_pos()
-                            main_dict.get((7, 0)).top_rect = pygame.Rect(main_dict.get((7, 0)).int_coords, (75, 75))
-                            self.has_piece = True
+                                main_dict.get((7, 0)).pos = (5, 0)
+                                main_dict.get((7, 0)).int_coords = main_dict.get((7, 0)).get_gui_pos()
+                                main_dict.get((7, 0)).top_rect = pygame.Rect(main_dict.get((7, 0)).int_coords, (75, 75))
+                                self.has_piece = True
+                                halfmove()
+                                fen_translate()
 
-                    if move == 'Q':
-                        if self.pos == (2, 0):
-                            for square in square_list:  # Has_piece set to False for the square where the piece was
-                                if square.pos == selected_piece.pos:
-                                    square.has_piece = False
-                                elif square.pos == main_dict.get((0, 0)).pos:
-                                    square.has_piece = False
 
-                            selected_piece.pos = self.pos
-                            selected_piece.int_coords = self.int_coords
-                            selected_piece.top_rect = pygame.Rect(self.int_coords, (75, 75))
+                        if move == 'Q':
+                            if self.pos == (2, 0):
+                                for square in square_list:  # Has_piece set to False for the square where the piece was
+                                    if square.pos == selected_piece.pos:
+                                        square.has_piece = False
+                                    elif square.pos == main_dict.get((0, 0)).pos:
+                                        square.has_piece = False
 
-                            main_dict.get((0, 0)).pos = (3, 0)
-                            main_dict.get((0, 0)).int_coords = main_dict.get((0, 0)).get_gui_pos()
-                            main_dict.get((0, 0)).top_rect = pygame.Rect(main_dict.get((0, 0)).int_coords, (75, 75))
-                            self.has_piece = True
+                                selected_piece.pos = self.pos
+                                selected_piece.int_coords = self.int_coords
+                                selected_piece.top_rect = pygame.Rect(self.int_coords, (75, 75))
+
+                                main_dict.get((0, 0)).pos = (3, 0)
+                                main_dict.get((0, 0)).int_coords = main_dict.get((0, 0)).get_gui_pos()
+                                main_dict.get((0, 0)).top_rect = pygame.Rect(main_dict.get((0, 0)).int_coords, (75, 75))
+                                self.has_piece = True
+                                halfmove()
+                                fen_translate()
 
                     # TODO
                     #   FINISH 'k' 'q' CASTLING
@@ -287,7 +325,7 @@ class Square:
                     # if move == 'k':
                     # if move == 'q':
                 elif move == self.pos:
-                    for square in square_list:  #   Has_piece set to False for the square where the piece was
+                    for square in square_list:  # Has_piece set to False for the square where the piece was
                         if square.pos == selected_piece.pos:
                             square.has_piece = False
 
@@ -301,50 +339,236 @@ class Square:
                     selected_piece.int_coords = self.int_coords
                     selected_piece.top_rect = pygame.Rect(self.int_coords, (75, 75))
                     self.has_piece = True
+                    halfmove()
+                    fen_translate()
 
 
-def fen_translate(turn, main_dict, castling, move):
-    return None
+# blacks WHITES
+def fen_translate():
+    global turn, move, main_dict, halfmove_clock
+    main_string = ''
+    n1 = 0
+    n2 = 8
+    for i in range(8):
+        string = ''
+        var = 0
+        counter = 0
+        for i in list(main_dict.values())[n1:n2]:
+            counter = counter + 1
+            if i is None:
+                var = var + 1
+            # Rook
+            elif i.name == 'Rook':
+                if i.color == 'white':
+                    if var == 0:
+                        string = string + 'R'
+                    elif var != 0:
+                        string = string + str(var) + 'R'
+                    var = 0
+                elif i.color == 'black':
+                    if var == 0:
+                        string = string + 'r'
+                    elif var != 0:
+                        string = string + str(var) + 'r'
+                    var = 0
+            # PAWN
+            elif i.name == 'Pawn':
+                if i.color == 'white':
+                    if var == 0:
+                        string = string + 'P'
+                    elif var != 0:
+                        string = string + str(var) + 'P'
+                    var = 0
+                elif i.color == 'black':
+                    if var == 0:
+                        string = string + 'p'
+                    elif var != 0:
+                        string = string + str(var) + 'p'
+                    var = 0
+            # Bishop
+            elif i.name == 'Bishop':
+                if i.color == 'white':
+                    if var == 0:
+                        string = string + 'B'
+                    elif var != 0:
+                        string = string + str(var) + 'B'
+                    var = 0
+                elif i.color == 'black':
+                    if var == 0:
+                        string = string + 'b'
+                    elif var != 0:
+                        string = string + str(var) + 'b'
+                    var = 0
+            # King
+            elif i.name == 'King':
+                if i.color == 'white':
+                    if var == 0:
+                        string = string + 'K'
+                    elif var != 0:
+                        string = string + str(var) + 'K'
+                    var = 0
+                elif i.color == 'black':
+                    if var == 0:
+                        string = string + 'k'
+                    elif var != 0:
+                        string = string + str(var) + 'k'
+                    var = 0
+            # Knight
+            elif i.name == 'Knight':
+                if i.color == 'white':
+                    if var == 0:
+                        string = string + 'N'
+                    elif var != 0:
+                        string = string + str(var) + 'N'
+                    var = 0
+                elif i.color == 'black':
+                    if var == 0:
+                        string = string + 'n'
+                    elif var != 0:
+                        string = string + str(var) + 'n'
+                    var = 0
+            # Queen
+            elif i.name == 'Queen':
+                if i.color == 'white':
+                    if var == 0:
+                        string = string + 'Q'
+                    elif var != 0:
+                        string = string + str(var) + 'Q'
+                    var = 0
+                elif i.color == 'black':
+                    if var == 0:
+                        string = string + 'q'
+                    elif var != 0:
+                        string = string + str(var) + 'q'
+                    var = 0
+            if counter == 8:
+                if var != 0:
+                    string = string + str(var)
+        main_string = main_string + string + "/"
+
+        n1 = n1 + 8
+        n2 = n2 + 8
+
+    main_string = main_string[:-1]
+    string2 = ''
+
+    if turn == 'w':
+        string2 = 'w'
+    elif turn == 'b':
+        string2 = 'b'
+
+    string3 = ''
+    for king in kings:
+        if not king.moved:
+            if king.name == 'King':
+                if king.color == 'white':
+                    if not king.rooks[0].moved:
+                        string3 = string3 + 'Q'
+                    if not king.rooks[1].moved:
+                        string3 = string3 + 'K'
+                elif king.color == 'black':
+                    if not king.rooks[0].moved:
+                        string3 = string3 + 'q'
+                    if not king.rooks[1].moved:
+                        string3 = string3 + 'k'
+
+    string4 = ''
+    if selected_piece.name == 'Pawn':
+        if selected_piece.color == 'white':
+            if selected_piece.pos[1] == 3:
+                if selected_piece.pos[0] == 0:
+                    string4 = 'a3'
+                elif selected_piece.pos[0] == 1:
+                    string4 = 'b3'
+                elif selected_piece.pos[0] == 2:
+                    string4 = 'c3'
+                elif selected_piece.pos[0] == 3:
+                    string4 = 'd3'
+                elif selected_piece.pos[0] == 4:
+                    string4 = 'e3'
+                elif selected_piece.pos[0] == 5:
+                    string4 = 'f3'
+                elif selected_piece.pos[0] == 6:
+                    string4 = 'g3'
+                elif selected_piece.pos[0] == 7:
+                    string4 = 'h3'
+            else:
+                string4 = '-'
+        elif selected_piece.color == 'black':
+            if selected_piece.pos[1] == 4:
+                if selected_piece.pos[0] == 0:
+                    string4 = 'a6'
+                elif selected_piece.pos[0] == 1:
+                    string4 = 'b6'
+                elif selected_piece.pos[0] == 2:
+                    string4 = 'c6'
+                elif selected_piece.pos[0] == 3:
+                    string4 = 'd6'
+                elif selected_piece.pos[0] == 4:
+                    string4 = 'e6'
+                elif selected_piece.pos[0] == 5:
+                    string4 = 'f6'
+                elif selected_piece.pos[0] == 6:
+                    string4 = 'g6'
+                elif selected_piece.pos[0] == 7:
+                    string4 = 'h6'
+            else:
+                string4 = '-'
+    else:
+        string4 = '-'
+
+    if turn == 'black':
+        move = move + 1
+    main_string = main_string + " " + string2 + " " + string3 + " " + string4 + " " + str(halfmove_clock) + " " + str(move)
+    print(main_string)
+
+
+def halfmove():
+    global halfmove_clock
+    if selected_piece.name == 'Pawn':
+        halfmove_clock = 0
+    else:
+        halfmove_clock = halfmove_clock + 1
 
 
 gameDisplay.fill(black)
 gameDisplay.blit(bg, (300, 100))
 
-pawn_b_1 = Pawn('Pawn', 'black', b_pawn, (0, 6))
-pawn_b_2 = Pawn('Pawn', 'black', b_pawn, (1, 6))
-pawn_b_3 = Pawn('Pawn', 'black', b_pawn, (2, 6))
-pawn_b_4 = Pawn('Pawn', 'black', b_pawn, (3, 6))
-pawn_b_5 = Pawn('Pawn', 'black', b_pawn, (4, 6))
-pawn_b_6 = Pawn('Pawn', 'black', b_pawn, (5, 6))
-pawn_b_7 = Pawn('Pawn', 'black', b_pawn, (6, 6))
-pawn_b_8 = Pawn('Pawn', 'black', b_pawn, (7, 6))
+pawn_b_1 = Pawn('Pawn', 'black', b_pawn, (0, 6), (0, 6))
+pawn_b_2 = Pawn('Pawn', 'black', b_pawn, (1, 6), (1, 6))
+pawn_b_3 = Pawn('Pawn', 'black', b_pawn, (2, 6), (2, 6))
+pawn_b_4 = Pawn('Pawn', 'black', b_pawn, (3, 6), (3, 6))
+pawn_b_5 = Pawn('Pawn', 'black', b_pawn, (4, 6), (4, 6))
+pawn_b_6 = Pawn('Pawn', 'black', b_pawn, (5, 6), (5, 6))
+pawn_b_7 = Pawn('Pawn', 'black', b_pawn, (6, 6), (6, 6))
+pawn_b_8 = Pawn('Pawn', 'black', b_pawn, (7, 6), (7, 6))
 
-rook_b_1 = Rook('Rook', 'black', b_rook, (0, 7))
+rook_b_1 = Rook('Rook', 'black', b_rook, (0, 7), (0, 7))
 knight_b_1 = Knight('Knight', 'black', b_knight, (1, 7))
 bishop_b_1 = Bishop('Bishop', 'black', b_bishop, (2, 7))
 queen_b = Queen('Queen', 'black', b_queen, (3, 7))
-king_b = King('King', 'black', b_king, (4, 7))
 bishop_b_2 = Bishop('Bishop', 'black', b_bishop, (5, 7))
 knight_b_2 = Knight('Knight', 'black', b_knight, (6, 7))
-rook_b_2 = Rook('Rook', 'black', b_rook, (7, 7))
+rook_b_2 = Rook('Rook', 'black', b_rook, (7, 7), (7, 7))
+king_b = King('King', 'black', b_king, (4, 7), (4, 7), (rook_b_1, rook_b_2))
 
-pawn_w_1 = Pawn('Pawn', 'white', w_pawn, (0, 1))
-pawn_w_2 = Pawn('Pawn', 'white', w_pawn, (1, 1))
-pawn_w_3 = Pawn('Pawn', 'white', w_pawn, (2, 1))
-pawn_w_4 = Pawn('Pawn', 'white', w_pawn, (3, 1))
-pawn_w_5 = Pawn('Pawn', 'white', w_pawn, (4, 1))
-pawn_w_6 = Pawn('Pawn', 'white', w_pawn, (5, 1))
-pawn_w_7 = Pawn('Pawn', 'white', w_pawn, (6, 1))
-pawn_w_8 = Pawn('Pawn', 'white', w_pawn, (7, 1))
+pawn_w_1 = Pawn('Pawn', 'white', w_pawn, (0, 1), (0, 1))
+pawn_w_2 = Pawn('Pawn', 'white', w_pawn, (1, 1), (1, 1))
+pawn_w_3 = Pawn('Pawn', 'white', w_pawn, (2, 1), (2, 1))
+pawn_w_4 = Pawn('Pawn', 'white', w_pawn, (3, 1), (3, 1))
+pawn_w_5 = Pawn('Pawn', 'white', w_pawn, (4, 1), (4, 1))
+pawn_w_6 = Pawn('Pawn', 'white', w_pawn, (5, 1), (5, 1))
+pawn_w_7 = Pawn('Pawn', 'white', w_pawn, (6, 1), (6, 1))
+pawn_w_8 = Pawn('Pawn', 'white', w_pawn, (7, 1), (7, 1))
 
-rook_w_1 = Rook('Rook', 'white', w_rook, (0, 0))
+rook_w_1 = Rook('Rook', 'white', w_rook, (0, 0), (0, 0))
 knight_w_1 = Knight('Knight', 'white', w_knight, (1, 0))
 bishop_w_1 = Bishop('Bishop', 'white', w_bishop, (2, 0))
 queen_w = Queen('Queen', 'white', w_queen, (3, 0))
-king_w = King('King', 'white', w_king, (4, 0))
 bishop_w_2 = Bishop('Bishop', 'white', w_bishop, (5, 0))
 knight_w_2 = Knight('Knight', 'white', w_knight, (6, 0))
-rook_w_2 = Rook('Rook', 'white', w_rook, (7, 0))
+rook_w_2 = Rook('Rook', 'white', w_rook, (7, 0), (7, 0))
+king_w = King('King', 'white', w_king, (4, 0), (4, 0), (rook_w_1, rook_w_2))
 
 square1 = Square((0, 0), 'light', True)
 square2 = Square((0, 1), 'brown', True)
@@ -427,7 +651,6 @@ square_list = [square1, square2, square3, square4, square5, square6, square7, sq
                square50, square51, square52, square53, square54, square55, square56, square57,
                square58, square59, square60, square61, square62, square63, square64]
 
-
 main_dict = {
     (0, 0): rook_w_1, (1, 0): knight_w_1, (2, 0): bishop_w_1, (3, 0): queen_w, (4, 0): king_w, (5, 0): bishop_w_2,
     (6, 0): knight_w_2, (7, 0): rook_w_2,
@@ -447,10 +670,31 @@ main_dict = {
     (6, 7): knight_b_2, (7, 7): rook_b_2
 }
 
+w_passant_row = [main_dict.get((0, 4)), main_dict.get((1, 4)), main_dict.get((2, 4)), main_dict.get((3, 4)),
+                 main_dict.get((4, 4)), main_dict.get((5, 4)), main_dict.get((6, 4)), main_dict.get((7, 4))]
+
+b_passant_row = [main_dict.get((0, 5)), main_dict.get((1, 5)), main_dict.get((2, 5)), main_dict.get((3, 5)),
+                 main_dict.get((4, 5)), main_dict.get((5, 5)), main_dict.get((6, 5)), main_dict.get((7, 5))]
+
+kings = [king_w, king_b]
+
+pawns = [pawn_w_1, pawn_w_2, pawn_w_3, pawn_w_4, pawn_w_5, pawn_w_6, pawn_w_7, pawn_w_8, pawn_b_1, pawn_b_2, pawn_b_3,
+         pawn_b_4, pawn_b_5, pawn_b_6, pawn_b_7, pawn_b_8]
+
 whites = [pawn_w_1, pawn_w_2, pawn_w_3, pawn_w_4, pawn_w_5, pawn_w_6, pawn_w_7, pawn_w_8,
           rook_w_1, rook_w_2, knight_w_1, knight_w_2, bishop_w_1, bishop_w_2, queen_w, king_w]
 blacks = [pawn_b_1, pawn_b_2, pawn_b_3, pawn_b_4, pawn_b_5, pawn_b_6, pawn_b_7, pawn_b_8,
           rook_b_1, rook_b_2, knight_b_1, knight_b_2, bishop_b_1, bishop_b_2, queen_b, king_b]
+
+
+def castling_check():
+    global kings
+    for pawn in pawns:
+        pawn.check_moved()
+    for king in kings:
+        king.check_moved()
+        for rook in king.rooks:
+            rook.check_moved()
 
 
 def check_click(click_pos):  # Checks which piece has been pressed
@@ -507,6 +751,7 @@ while gameExit:
             sys.exit()
         elif event.type == pygame.MOUSEBUTTONDOWN:  # Checks if mouse is pressed
             check_click(event.pos)
+            castling_check()
             for piece in whites:
                 if piece.name == 'King':
                     piece.check_castling()
@@ -514,11 +759,8 @@ while gameExit:
 
 # TODO
 #   ADD:
-#       KING MOVED VAR
+#       AFTER MOVING A PIECE, RETURN TO NON-SELECTED SQUARES
 #       INVERTED BOARD FOR BLACK
 #       NOT BEING ABLE TO MOVE WHEN PIECE IS INFRONT
 #       SOUND
-#   FIX:
-#       QUEEN NOT MOVING VERTICALLY
-#       AFTER MOVING A PIECE, RETURN TO NON-SELECTED SQUARES
 #
