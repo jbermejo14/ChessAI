@@ -1,13 +1,13 @@
 import sys
 import pygame
 from pygame import Surface
-import requests
-import json
 
 black = pygame.Color(0, 0, 0)
 white = pygame.Color(255, 255, 255)
 gameDisplay = pygame.display.set_mode((1200, 800))
 gameExit = True
+
+halfmove_clock = 0
 
 move = 0
 turn = 'w'
@@ -54,7 +54,8 @@ class Piece:
         x, y = self.pos
         return x * square_size + 300, (7 - y) * square_size + 100  # Adjust for GUI positions
 
-    def selected_action(self, possible_moves):
+    @staticmethod
+    def selected_action(possible_moves):
         for square in square_list:
             square.for_selection = False
 
@@ -99,7 +100,9 @@ class Piece:
     def __repr__(self):
         return f"Piece(name={self.name!r}, color={self.color!r}, position={self.pos!r})"
 
+
 selected_piece: Piece or None
+
 
 class Knight(Piece):
     def get_possible_moves(self):
@@ -214,9 +217,6 @@ class King(Piece):
 
         return castling
 
-    # TODO
-    #   ADD Has_moved logic
-
     def get_possible_moves(self):
         x, y = self.pos
         move_list = [(x, y + 1), (x + 1, y + 1), (x - 1, y + 1), (x + 1, y), (x - 1, y), (x, y - 1),
@@ -296,7 +296,9 @@ class Square:
                                 main_dict.get((7, 0)).int_coords = main_dict.get((7, 0)).get_gui_pos()
                                 main_dict.get((7, 0)).top_rect = pygame.Rect(main_dict.get((7, 0)).int_coords, (75, 75))
                                 self.has_piece = True
-                                fen_translate(main_dict)
+                                halfmove()
+                                fen_translate()
+
 
                         if move == 'Q':
                             if self.pos == (2, 0):
@@ -314,7 +316,8 @@ class Square:
                                 main_dict.get((0, 0)).int_coords = main_dict.get((0, 0)).get_gui_pos()
                                 main_dict.get((0, 0)).top_rect = pygame.Rect(main_dict.get((0, 0)).int_coords, (75, 75))
                                 self.has_piece = True
-                                fen_translate(main_dict)
+                                halfmove()
+                                fen_translate()
 
                     # TODO
                     #   FINISH 'k' 'q' CASTLING
@@ -322,7 +325,7 @@ class Square:
                     # if move == 'k':
                     # if move == 'q':
                 elif move == self.pos:
-                    for square in square_list:  #   Has_piece set to False for the square where the piece was
+                    for square in square_list:  # Has_piece set to False for the square where the piece was
                         if square.pos == selected_piece.pos:
                             square.has_piece = False
 
@@ -336,12 +339,13 @@ class Square:
                     selected_piece.int_coords = self.int_coords
                     selected_piece.top_rect = pygame.Rect(self.int_coords, (75, 75))
                     self.has_piece = True
-                    fen_translate(main_dict)
+                    halfmove()
+                    fen_translate()
 
 
 # blacks WHITES
-def fen_translate(main_dict):
-    global turn, move
+def fen_translate():
+    global turn, move, main_dict, halfmove_clock
     main_string = ''
     n1 = 0
     n2 = 8
@@ -441,9 +445,11 @@ def fen_translate(main_dict):
                 if var != 0:
                     string = string + str(var)
         main_string = main_string + string + "/"
+
         n1 = n1 + 8
         n2 = n2 + 8
 
+    main_string = main_string[:-1]
     string2 = ''
 
     if turn == 'w':
@@ -513,13 +519,17 @@ def fen_translate(main_dict):
 
     if turn == 'black':
         move = move + 1
-    main_string = main_string + " " + string2 + " " + string3 + " " + string4 + " " + "-" + " " + str(move)
+    main_string = main_string + " " + string2 + " " + string3 + " " + string4 + " " + str(halfmove_clock) + " " + str(move)
     print(main_string)
 
 
-# TODO
-#   ADD LATEST MOVE
-#       TURN
+def halfmove():
+    global halfmove_clock
+    if selected_piece.name == 'Pawn':
+        halfmove_clock = 0
+    else:
+        halfmove_clock = halfmove_clock + 1
+
 
 gameDisplay.fill(black)
 gameDisplay.blit(bg, (300, 100))
@@ -749,10 +759,8 @@ while gameExit:
 
 # TODO
 #   ADD:
-#       KING MOVED VAR#       AFTER MOVING A PIECE, RETURN TO NON-SELECTED SQUARES
+#       AFTER MOVING A PIECE, RETURN TO NON-SELECTED SQUARES
 #       INVERTED BOARD FOR BLACK
 #       NOT BEING ABLE TO MOVE WHEN PIECE IS INFRONT
 #       SOUND
-#   FIX:
-#       QUEEN NOT MOVING VERTICALLY
 #
