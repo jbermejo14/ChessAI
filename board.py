@@ -1,6 +1,7 @@
 import sys
 import pygame
 from pygame import Surface
+import requests
 
 black = pygame.Color(0, 0, 0)
 white = pygame.Color(255, 255, 255)
@@ -31,11 +32,33 @@ b_bishop = pygame.image.load('resources/img/style1/b_bishop.png')
 b_king = pygame.image.load('resources/img/style1/b_king.png')
 b_queen = pygame.image.load('resources/img/style1/b_queen.png')
 
+API_URL = "http://13.60.38.167:5000"
+
 if not pygame.get_init():
     pygame.init()
 
 if not pygame.font.get_init():
     pygame.font.init()
+
+
+import requests
+
+def lambda_move(fen):
+    url = f"{API_URL}/move"
+    headers = {"Content-Type": "application/json"}
+    try:
+        response = requests.post(url, json={"fen": fen}, timeout=15)
+        data = response.json()
+        print("AI move:", data)
+        return data
+    except requests.exceptions.Timeout:
+        print("AI move timed out!")
+        return None
+    except requests.exceptions.RequestException as e:
+        print("Error calling AI:", e)
+        return None
+
+
 
 
 class Piece:
@@ -85,17 +108,6 @@ class Piece:
                                     square.img = selectedLightBrownBoard
                                 elif square.color == 'light':
                                     square.img = selectedBrownBoard
-
-    # def lambda_move(self):
-    #     url = f"{API_GATEWAY_URL}/move"
-    #
-    #     payload = {
-    #         "turn": turn,
-    #     }
-    #
-    #     headers = {"Content-Type": "application/json"}
-    #     response = requests.post(url, data=json.dumps(payload), headers=headers)
-    #     return response.json()
 
     def __repr__(self):
         return f"Piece(name={self.name!r}, color={self.color!r}, position={self.pos!r})"
@@ -340,7 +352,9 @@ class Square:
                     selected_piece.top_rect = pygame.Rect(self.int_coords, (75, 75))
                     self.has_piece = True
                     halfmove()
-                    fen_translate()
+                    fen = fen_translate()
+                    ai_move = lambda_move(fen)
+
 
 
 # blacks WHITES
@@ -521,6 +535,9 @@ def fen_translate():
         move = move + 1
     main_string = main_string + " " + string2 + " " + string3 + " " + string4 + " " + str(halfmove_clock) + " " + str(move)
     print(main_string)
+    return main_string
+
+
 
 
 def halfmove():
