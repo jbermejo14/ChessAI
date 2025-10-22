@@ -31,7 +31,7 @@ b_knight = pygame.image.load('resources/img/style1/b_knight.png')
 b_bishop = pygame.image.load('resources/img/style1/b_bishop.png')
 b_king = pygame.image.load('resources/img/style1/b_king.png')
 b_queen = pygame.image.load('resources/img/style1/b_queen.png')
-
+fen_move = 0
 API_URL = "http://13.60.38.167:5000"
 
 if not pygame.get_init():
@@ -287,6 +287,7 @@ class Square:
         return x * square_size + 300, (7 - y) * square_size + 100  # Adjust for GUI positions
 
     def selected_action(self):
+        global turn, selected_piece, main_dict, square_list, move, fen_move, fen
         if selected_piece is not None:
             moves_list = selected_piece.get_possible_moves()
             for move in moves_list:
@@ -352,14 +353,54 @@ class Square:
                     selected_piece.top_rect = pygame.Rect(self.int_coords, (75, 75))
                     self.has_piece = True
                     halfmove()
-                    fen = fen_translate()
-                    ai_move = lambda_move(fen)
+                    fen = fen_translate("b")
+                    fen_move = fen_move + 1
+                    turn = "b"
+                    ai_move()
+
+def convert_notation_to_pos(square):
+    file = square[0]
+    rank = int(square[1])
+    file_index = ord(file) - ord('a')
+    rank_index = 8 - rank
+    return (file_index, rank_index)
 
 
+def ai_move():
+    global fen_move, turn, fen
+
+    move_str = lambda_move(fen)["best_move"]  # e.g. "f8e7"
+    print("AI move:", move_str)
+
+    ai_piece = convert_notation_to_pos(move_str[:2])
+    ai_movement = convert_notation_to_pos(move_str[2:])
+
+    print("ai_piece", ai_piece)
+    print("ai_movement", ai_movement)
+
+    piece_to_move = main_dict.get(ai_piece)
+    if piece_to_move is None:
+        print(f"⚠️ No piece found at {ai_piece}. main_dict may be out of sync.")
+        return
+
+    # Move it safely
+    main_dict[ai_piece] = None
+    piece_to_move.pos = ai_movement
+    piece_to_move.int_coords = piece_to_move.get_gui_pos()
+    piece_to_move.top_rect = pygame.Rect(piece_to_move.int_coords, (75, 75))
+    main_dict[ai_movement] = piece_to_move
+
+    for sq in square_list:
+        sq.has_piece = (sq.pos == ai_movement)
+
+    halfmove()
+    fen_move += 1
+    fen = fen_translate("w")
+    turn = "w"
 
 # blacks WHITES
-def fen_translate():
-    global turn, move, main_dict, halfmove_clock
+def fen_translate(turn):
+    global move, main_dict, halfmove_clock, fen_move
     main_string = ''
     n1 = 0
     n2 = 8
@@ -466,11 +507,6 @@ def fen_translate():
     main_string = main_string[:-1]
     string2 = ''
 
-    if turn == 'w':
-        string2 = 'w'
-    elif turn == 'b':
-        string2 = 'b'
-
     string3 = ''
     for king in kings:
         if not king.moved:
@@ -531,9 +567,9 @@ def fen_translate():
     else:
         string4 = '-'
 
-    if turn == 'black':
-        move = move + 1
-    main_string = main_string + " " + string2 + " " + string3 + " " + string4 + " " + str(halfmove_clock) + " " + str(move)
+    string2 = turn
+
+    main_string = main_string + " " + string2 + " " + string3 + " " + string4 + " " + str(halfmove_clock) + " " + str(fen_move)
     print(main_string)
     return main_string
 
